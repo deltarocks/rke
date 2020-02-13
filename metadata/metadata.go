@@ -2,11 +2,19 @@ package metadata
 
 import (
 	"context"
+	"io/ioutil"
+	"net/http"
+	"os"
 	"strings"
 
 	mVersion "github.com/mcuadros/go-version"
-	"github.com/rancher/kontainer-driver-metadata/rke"
-	"github.com/rancher/types/apis/management.cattle.io/v3"
+	"github.com/rancher/rke/data"
+	v3 "github.com/rancher/types/apis/management.cattle.io/v3"
+	"github.com/rancher/types/kdm"
+)
+
+const (
+	metadataURLEnv = "METADATA_URL"
 )
 
 var (
@@ -23,31 +31,66 @@ var (
 )
 
 func InitMetadata(ctx context.Context) error {
-	initK8sRKESystemImages()
-	initAddonTemplates()
-	initServiceOptions()
-	initDockerOptions()
+	data, err := loadData()
+	if err != nil {
+		return err
+	}
+	initK8sRKESystemImages(data)
+	initAddonTemplates(data)
+	initServiceOptions(data)
+	initDockerOptions(data)
 	return nil
+}
+
+// this method loads metadata from three place, if METADATA_URL is provided then load data from specified location. Otherwise load data from bindata.
+func loadData() (kdm.Data, error) {
+	var b []byte
+	var err error
+	u := os.Getenv(metadataURLEnv)
+	if u != "" {
+		b, err = readFile(u)
+		if err != nil {
+			return kdm.Data{}, err
+		}
+	} else {
+		b, err = data.Asset("data/data.json")
+		if err != nil {
+			return kdm.Data{}, err
+		}
+	}
+	return kdm.FromData(b)
+}
+
+func readFile(file string) ([]byte, error) {
+	if strings.HasPrefix(file, "http") {
+		resp, err := http.Get(file)
+		if err != nil {
+			return nil, err
+		}
+		defer resp.Body.Close()
+		return ioutil.ReadAll(resp.Body)
+	}
+	return ioutil.ReadFile(file)
 }
 
 const RKEVersionDev = "v0.2.3"
 
-func initAddonTemplates() {
-	K8sVersionToTemplates = rke.DriverData.K8sVersionedTemplates
+func initAddonTemplates(data kdm.Data) {
+	K8sVersionToTemplates = data.K8sVersionedTemplates
 }
 
-func initServiceOptions() {
-	K8sVersionToServiceOptions = interface{}(rke.DriverData.K8sVersionServiceOptions).(map[string]v3.KubernetesServicesOptions)
-	K8sVersionToWindowsServiceOptions = rke.DriverData.K8sVersionWindowsServiceOptions
+func initServiceOptions(data kdm.Data) {
+	K8sVersionToServiceOptions = interface{}(data.K8sVersionServiceOptions).(map[string]v3.KubernetesServicesOptions)
+	K8sVersionToWindowsServiceOptions = data.K8sVersionWindowsServiceOptions
 }
 
-func initDockerOptions() {
-	K8sVersionToDockerVersions = rke.DriverData.K8sVersionDockerInfo
+func initDockerOptions(data kdm.Data) {
+	K8sVersionToDockerVersions = data.K8sVersionDockerInfo
 }
 
-func initK8sRKESystemImages() {
+func initK8sRKESystemImages(data kdm.Data) {
 	K8sVersionToRKESystemImages = map[string]v3.RKESystemImages{}
-	rkeData := rke.DriverData
+	rkeData := data
 	// non released versions
 	if RKEVersion == "" {
 		RKEVersion = RKEVersionDev

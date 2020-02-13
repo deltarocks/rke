@@ -23,6 +23,14 @@ Please use [High Availability (HA) Install](https://rancher.com/docs/rancher/v2.
 
 RKE can be built using the `make` command, and will use the scripts in the `scripts` directory as subcommands. The default subcommand is `ci` and will use `scripts/ci`. Cross compiling can be enabled by setting the environment variable `CROSS=1`. The compiled binaries can be found in the `build/bin` directory. Dependencies are managed by Go modules and can be found in [go.mod](https://github.com/rancher/rke/blob/master/go.mod).
 
+RKE now fetches `data.json` from https://github.com/rancher/kontainer-driver-metadata. To fetch data.json and compile it in rke, run 
+
+```bash
+KDM_DATA_URL=${URL} go generate
+```
+    
+`KDM_DATA_URL` defaults to `https://releases.rancher.com/kontainer-driver-metadata/dev-v2.4/data.json`.
+
 ## License
 
 Copyright (c) 2019 [Rancher Labs, Inc.](http://rancher.com)
