@@ -4,11 +4,13 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	rkeData "github.com/rancher/kontainer-driver-metadata/rke/templates"
-	"github.com/rancher/rke/templates"
 	"os"
 	"os/exec"
 	"time"
+
+	rkeData "github.com/rancher/kontainer-driver-metadata/rke/templates"
+	"github.com/rancher/rke/templates"
+	v3 "github.com/rancher/types/apis/management.cattle.io/v3"
 
 	"io/ioutil"
 	"net/http"
@@ -20,7 +22,6 @@ import (
 	"github.com/rancher/rke/log"
 	"github.com/rancher/rke/services"
 	"github.com/rancher/rke/util"
-	"github.com/rancher/types/apis/management.cattle.io/v3"
 	"github.com/sirupsen/logrus"
 	"gopkg.in/yaml.v2"
 )
@@ -367,7 +368,8 @@ func (c *Cluster) deployWithKubectl(ctx context.Context, addonYaml string) error
 }
 
 func (c *Cluster) doAddonDeploy(ctx context.Context, addonYaml, resourceName string, isCritical bool) error {
-	if c.UseKubectlDeploy {
+	if c.UseKubectlDeploy || (resourceName == NetworkPluginResourceName && !*c.Services.Kubeproxy.Enabled) {
+		// deploy via local kubectl if specified or if this is a network plugin and kubeproxy is disabled
 		if err := c.deployWithKubectl(ctx, addonYaml); err != nil {
 			return &addonError{fmt.Sprintf("%v", err), isCritical}
 		}

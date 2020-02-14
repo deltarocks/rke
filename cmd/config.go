@@ -15,7 +15,7 @@ import (
 	"github.com/rancher/rke/cluster"
 	"github.com/rancher/rke/pki"
 	"github.com/rancher/rke/services"
-	"github.com/rancher/types/apis/management.cattle.io/v3"
+	v3 "github.com/rancher/types/apis/management.cattle.io/v3"
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli"
 	"gopkg.in/yaml.v2"
@@ -380,7 +380,7 @@ func getAuthzConfig(reader *bufio.Reader) (*v3.AuthzConfig, error) {
 func getNetworkConfig(reader *bufio.Reader) (*v3.NetworkConfig, error) {
 	networkConfig := v3.NetworkConfig{}
 
-	networkPlugin, err := getConfig(reader, "Network Plugin Type (flannel, calico, weave, canal)", cluster.DefaultNetworkPlugin)
+	networkPlugin, err := getConfig(reader, "Network Plugin Type (flannel, calico, weave, canal, kube-router)", cluster.DefaultNetworkPlugin)
 	if err != nil {
 		return nil, err
 	}

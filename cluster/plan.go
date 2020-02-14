@@ -92,7 +92,12 @@ func BuildRKEConfigNodePlan(ctx context.Context, myCluster *Cluster, host *hosts
 	// Everybody gets a sidecar and a kubelet..
 	processes[services.SidekickContainerName] = myCluster.BuildSidecarProcess(host, prefixPath)
 	processes[services.KubeletContainerName] = myCluster.BuildKubeletProcess(host, prefixPath, svcOptionData)
-	processes[services.KubeproxyContainerName] = myCluster.BuildKubeProxyProcess(host, prefixPath, svcOptionData)
+
+	if *myCluster.RancherKubernetesEngineConfig.Services.Kubeproxy.Enabled {
+		processes[services.KubeproxyContainerName] = myCluster.BuildKubeProxyProcess(host, prefixPath, svcOptionData)
+	} else {
+		logrus.Debugln("Kubeproxy is disabled")
+	}
 
 	portChecks = append(portChecks, BuildPortChecksFromPortList(host, WorkerPortList, ProtocolTCP)...)
 	// Do we need an nginxProxy for this one ?

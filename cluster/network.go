@@ -15,7 +15,7 @@ import (
 	"github.com/rancher/rke/pki"
 	"github.com/rancher/rke/templates"
 	"github.com/rancher/rke/util"
-	"github.com/rancher/types/apis/management.cattle.io/v3"
+	v3 "github.com/rancher/types/apis/management.cattle.io/v3"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/sync/errgroup"
 )
@@ -67,6 +67,11 @@ const (
 
 	WeaveNetworkPlugin  = "weave"
 	WeaveNetworkAppName = "weave-net"
+
+	KubeRouterNetworkPlugin   = "kube-router"
+	KubeRouterRunServiceProxy = "kube_router_run_service_proxy"
+	KubeRouterRunFirewall     = "kube_router_run_firewall"
+
 	// List of map keys to be used with network templates
 
 	// EtcdEndpoints is the server address for Etcd, used by calico
@@ -108,6 +113,8 @@ const (
 	MTU              = "MTU"
 	RBACConfig       = "RBACConfig"
 	ClusterVersion   = "ClusterVersion"
+	RunServiceProxy  = "RunServiceProxy" // for CNIs which can replace kube-proxy as the cluster service proxy
+	RunFirewall      = "RunFirewall"
 
 	NodeSelector = "NodeSelector"
 )
@@ -142,6 +149,8 @@ func (c *Cluster) deployNetworkPlugin(ctx context.Context, data map[string]inter
 		return c.doCanalDeploy(ctx, data)
 	case WeaveNetworkPlugin:
 		return c.doWeaveDeploy(ctx, data)
+	case KubeRouterNetworkPlugin:
+		return c.doKubeRouterDeploy(ctx, data)
 	case NoNetworkPlugin:
 		log.Infof(ctx, "[network] Not deploying a cluster network, expecting custom CNI")
 		return nil
@@ -261,9 +270,26 @@ func (c *Cluster) doWeaveDeploy(ctx context.Context, data map[string]interface{}
 	return c.doAddonDeploy(ctx, pluginYaml, NetworkPluginResourceName, true)
 }
 
+func (c *Cluster) doKubeRouterDeploy(ctx context.Context, data map[string]interface{}) error {
+
+	kubeRouterConfig := map[string]interface{}{
+		ClusterCIDR:     c.ClusterCIDR,
+		CNIImage:        c.SystemImages.KubeRouterCNI,
+		RunServiceProxy: c.Network.Options[KubeRouterRunServiceProxy],
+		RunFirewall:     c.Network.Options[KubeRouterRunFirewall],
+		APIRoot:         "https://127.0.0.1:6443/",
+		// TODO: @iwilltry42 add more config options
+	}
+	pluginYaml, err := c.getNetworkPluginManifest(kubeRouterConfig, data)
+	if err != nil {
+		return err
+	}
+	return c.doAddonDeploy(ctx, pluginYaml, NetworkPluginResourceName, true)
+}
+
 func (c *Cluster) getNetworkPluginManifest(pluginConfig, data map[string]interface{}) (string, error) {
 	switch c.Network.Plugin {
-	case CanalNetworkPlugin, FlannelNetworkPlugin, CalicoNetworkPlugin, WeaveNetworkPlugin:
+	case CanalNetworkPlugin, FlannelNetworkPlugin, CalicoNetworkPlugin, WeaveNetworkPlugin, KubeRouterNetworkPlugin:
 		tmplt, err := templates.GetVersionedTemplates(c.Network.Plugin, data, c.Version)
 		if err != nil {
 			return "", err

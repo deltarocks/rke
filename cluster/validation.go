@@ -5,6 +5,9 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/rancher/rke/metadata"
+	v1 "k8s.io/api/core/v1"
+
 	"github.com/rancher/rke/log"
 	"github.com/rancher/rke/metadata"
 	"github.com/rancher/rke/pki"
@@ -67,7 +70,7 @@ func validateAuthOptions(c *Cluster) error {
 }
 
 func validateNetworkOptions(c *Cluster) error {
-	if c.Network.Plugin != NoNetworkPlugin && c.Network.Plugin != FlannelNetworkPlugin && c.Network.Plugin != CalicoNetworkPlugin && c.Network.Plugin != CanalNetworkPlugin && c.Network.Plugin != WeaveNetworkPlugin {
+	if c.Network.Plugin != NoNetworkPlugin && c.Network.Plugin != FlannelNetworkPlugin && c.Network.Plugin != CalicoNetworkPlugin && c.Network.Plugin != CanalNetworkPlugin && c.Network.Plugin != WeaveNetworkPlugin && c.Network.Plugin != KubeRouterNetworkPlugin {
 		return fmt.Errorf("Network plugin [%s] is not supported", c.Network.Plugin)
 	}
 	if c.Network.Plugin == FlannelNetworkPlugin && c.Network.MTU != 0 {
@@ -349,6 +352,10 @@ func validateNetworkImages(c *Cluster) error {
 		}
 		if len(c.SystemImages.WeaveNode) == 0 {
 			return fmt.Errorf("weave image is not populated")
+		}
+	} else if c.Network.Plugin == KubeRouterNetworkPlugin {
+		if len(c.SystemImages.KubeRouterCNI) == 0 {
+			return fmt.Errorf("kube-router cni image is not populated")
 		}
 	}
 	return nil

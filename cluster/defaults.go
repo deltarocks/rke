@@ -63,6 +63,9 @@ const (
 	DefaultFlannelBackendVxLanPort = "8472"
 	DefaultFlannelBackendVxLanVNI  = "1"
 
+	DefaultKubeRouterRunServiceProxy = false
+	DefaultKubeRouterRunFirewall     = false
+
 	KubeAPIArgAdmissionControlConfigFile             = "admission-control-config-file"
 	DefaultKubeAPIArgAdmissionControlConfigFileValue = "/etc/kubernetes/admission.yaml"
 
@@ -81,6 +84,8 @@ const (
 	DefaultNodeDrainTimeout          = 120
 	DefaultNodeDrainGracePeriod      = -1
 	DefaultNodeDrainIgnoreDaemonsets = true
+
+  DefaultServiceKubeproxyEnabled = true
 )
 
 type ExternalFlags struct {
@@ -235,6 +240,12 @@ func (c *Cluster) setClusterServicesDefaults() {
 	if c.Services.Etcd.Snapshot == nil {
 		defaultSnapshot := DefaultEtcdSnapshot
 		c.Services.Etcd.Snapshot = &defaultSnapshot
+	}
+
+	// enable kubeproxy by default
+	if c.Services.Kubeproxy.Enabled == nil {
+		defaultServiceKubeproxyEnabled := DefaultServiceKubeproxyEnabled
+		c.Services.Kubeproxy.Enabled = &defaultServiceKubeproxyEnabled
 	}
 
 	serviceConfigDefaultsMap := map[*string]string{
@@ -506,6 +517,23 @@ func (c *Cluster) setClusterNetworkDefaults() {
 	}
 	if c.Network.WeaveNetworkProvider != nil {
 		networkPluginConfigDefaultsMap[WeavePassword] = c.Network.WeaveNetworkProvider.Password
+	}
+	if c.Network.KubeRouterNetworkProvider != nil {
+		// by default, do not run service proxy in kube-router
+		if c.Network.KubeRouterNetworkProvider.RunServiceProxy == nil {
+			defaultKubeRouterRunServiceProxy := DefaultKubeRouterRunServiceProxy
+			c.Network.KubeRouterNetworkProvider.RunServiceProxy = &defaultKubeRouterRunServiceProxy
+		}
+		// disable kube-proxy if a kube-router runs a service proxy
+		if *c.Network.KubeRouterNetworkProvider.RunServiceProxy {
+			serviceProxyEnabled := false
+			c.Services.Kubeproxy.Enabled = &serviceProxyEnabled
+		}
+		// by default, do not run firewall
+		if c.Network.KubeRouterNetworkProvider.RunFirewall == nil {
+			defaultKubeRouterRunFirewall := DefaultKubeRouterRunFirewall
+			c.Network.KubeRouterNetworkProvider.RunFirewall = &defaultKubeRouterRunFirewall
+		}
 	}
 	for k, v := range networkPluginConfigDefaultsMap {
 		setDefaultIfEmptyMapValue(c.Network.Options, k, v)
