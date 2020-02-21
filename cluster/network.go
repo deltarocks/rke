@@ -116,7 +116,8 @@ const (
 	RunServiceProxy  = "RunServiceProxy" // for CNIs which can replace kube-proxy as the cluster service proxy
 	RunFirewall      = "RunFirewall"
 
-	NodeSelector = "NodeSelector"
+	NodeSelector   = "NodeSelector"
+	UpdateStrategy = "UpdateStrategy"
 )
 
 var EtcdPortList = []string{
@@ -182,6 +183,7 @@ func (c *Cluster) doFlannelDeploy(ctx context.Context, data map[string]interface
 		RBACConfig:     c.Authorization.Mode,
 		ClusterVersion: util.GetTagMajorVersion(c.Version),
 		NodeSelector:   c.Network.NodeSelector,
+		UpdateStrategy: c.Network.UpdateStrategy,
 	}
 	pluginYaml, err := c.getNetworkPluginManifest(flannelConfig, data)
 	if err != nil {
@@ -205,6 +207,7 @@ func (c *Cluster) doCalicoDeploy(ctx context.Context, data map[string]interface{
 		RBACConfig:       c.Authorization.Mode,
 		NodeSelector:     c.Network.NodeSelector,
 		MTU:              c.Network.MTU,
+		UpdateStrategy:   c.Network.UpdateStrategy,
 	}
 	pluginYaml, err := c.getNetworkPluginManifest(calicoConfig, data)
 	if err != nil {
@@ -242,8 +245,9 @@ func (c *Cluster) doCanalDeploy(ctx context.Context, data map[string]interface{}
 			"VNI":  flannelVni,
 			"Port": flannelPort,
 		},
-		NodeSelector: c.Network.NodeSelector,
-		MTU:          c.Network.MTU,
+		NodeSelector:   c.Network.NodeSelector,
+		MTU:            c.Network.MTU,
+		UpdateStrategy: c.Network.UpdateStrategy,
 	}
 	pluginYaml, err := c.getNetworkPluginManifest(canalConfig, data)
 	if err != nil {
@@ -262,6 +266,7 @@ func (c *Cluster) doWeaveDeploy(ctx context.Context, data map[string]interface{}
 		RBACConfig:         c.Authorization.Mode,
 		NodeSelector:       c.Network.NodeSelector,
 		MTU:                c.Network.MTU,
+		UpdateStrategy:     c.Network.UpdateStrategy,
 	}
 	pluginYaml, err := c.getNetworkPluginManifest(weaveConfig, data)
 	if err != nil {
