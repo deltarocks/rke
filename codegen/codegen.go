@@ -5,17 +5,18 @@ import (
 	"io/ioutil"
 	"net/http"
 	"os"
+
+	"github.com/rancher/rke/metadata"
 )
 
 const (
 	defaultURL = "https://releases.rancher.com/kontainer-driver-metadata/dev-v2.4/data.json"
 	dataFile   = "data/data.json"
-	envName    = "KDM_DATA_URL"
 )
 
 // Codegen fetch data.json from https://releases.rancher.com/kontainer-driver-metadata/dev-v2.4/data.json and generates bindata
 func main() {
-	u := os.Getenv(envName)
+	u := os.Getenv(metadata.RancherMetadataURLEnv)
 	if u == "" {
 		u = defaultURL
 	}

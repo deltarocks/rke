@@ -40,7 +40,7 @@ type State struct {
 }
 
 func (c *Cluster) UpdateClusterCurrentState(ctx context.Context, fullState *FullState) error {
-	fullState.CurrentState.RancherKubernetesEngineConfig = c.RancherKubernetesEngineConfig.DeepCopy()
+	fullState.CurrentState.RancherKubernetesEngineConfig = c.RancherKubernetesEngineConfig //.DeepCopy()
 	fullState.CurrentState.CertificatesBundle = c.Certificates
 	fullState.CurrentState.EncryptionConfig = c.EncryptionConfig.EncryptionProviderFile
 	return fullState.WriteStateFile(ctx, c.StateFilePath)

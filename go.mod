@@ -46,3 +46,7 @@ require (
 	k8s.io/kubectl v0.17.2
 	sigs.k8s.io/yaml v1.1.0
 )
+
+replace github.com/rancher/kontainer-driver-metadata => ../rke-kontainer-driver-metadata/
+
+replace github.com/rancher/types => ../rke-types/

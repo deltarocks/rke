@@ -2,10 +2,14 @@ package metadata
 
 import (
 	"context"
+	"fmt"
 	"io/ioutil"
 	"net/http"
 	"os"
 	"strings"
+	"time"
+
+	"github.com/sirupsen/logrus"
 
 	mVersion "github.com/mcuadros/go-version"
 	"github.com/rancher/rke/data"
@@ -14,7 +18,7 @@ import (
 )
 
 const (
-	metadataURLEnv = "METADATA_URL"
+	RancherMetadataURLEnv = "RANCHER_METADATA_URL"
 )
 
 var (
@@ -28,12 +32,16 @@ var (
 	K8sBadVersions              = map[string]bool{}
 
 	K8sVersionToWindowsServiceOptions map[string]v3.KubernetesServicesOptions
+
+	c = http.Client{
+		Timeout: time.Second * 30,
+	}
 )
 
 func InitMetadata(ctx context.Context) error {
 	data, err := loadData()
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to load data.json, error: %v", err)
 	}
 	initK8sRKESystemImages(data)
 	initAddonTemplates(data)
@@ -42,28 +50,31 @@ func InitMetadata(ctx context.Context) error {
 	return nil
 }
 
-// this method loads metadata from three place, if METADATA_URL is provided then load data from specified location. Otherwise load data from bindata.
+// this method loads metadata from three place, if RANCHER_METADATA_URL is provided then load data from specified location. Otherwise load data from bindata.
 func loadData() (kdm.Data, error) {
 	var b []byte
 	var err error
-	u := os.Getenv(metadataURLEnv)
+	u := os.Getenv(RancherMetadataURLEnv)
 	if u != "" {
+		logrus.Debugf("Loading data.json from %s, timestamp: %s", u, time.Now().Format(time.RFC822))
 		b, err = readFile(u)
 		if err != nil {
 			return kdm.Data{}, err
 		}
 	} else {
+		logrus.Debugf("Logging data.json from local source, timestamp: %s", time.Now().Format(time.RFC822))
 		b, err = data.Asset("data/data.json")
 		if err != nil {
 			return kdm.Data{}, err
 		}
 	}
+	logrus.Debugf("data.json content: %v", string(b))
 	return kdm.FromData(b)
 }
 
 func readFile(file string) ([]byte, error) {
 	if strings.HasPrefix(file, "http") {
-		resp, err := http.Get(file)
+		resp, err := c.Get(file)
 		if err != nil {
 			return nil, err
 		}
