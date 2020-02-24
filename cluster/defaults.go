@@ -87,7 +87,7 @@ const (
 	DefaultNodeDrainGracePeriod      = -1
 	DefaultNodeDrainIgnoreDaemonsets = true
 
-  DefaultServiceKubeproxyEnabled = true
+	DefaultServiceKubeproxyEnabled = true
 )
 
 var (
