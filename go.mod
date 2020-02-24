@@ -47,6 +47,6 @@ require (
 	sigs.k8s.io/yaml v1.1.0
 )
 
-replace github.com/rancher/kontainer-driver-metadata => ../rke-kontainer-driver-metadata/
+replace github.com/rancher/kontainer-driver-metadata => github.com/deltarocks/rke-kontainer-driver-metadata v0.0.0-20200221101717-076c8eded96a
 
-replace github.com/rancher/types => ../rke-types/
+replace github.com/rancher/types => github.com/deltarocks/rke-types v0.0.0-20200221101647-43f12f8a3674
