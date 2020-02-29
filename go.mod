@@ -28,6 +28,7 @@ require (
 	github.com/morikuni/aec v0.0.0-20170113033406-39771216ff4c // indirect
 	github.com/opencontainers/image-spec v1.0.1 // indirect
 	github.com/pkg/errors v0.8.1
+	github.com/rancher/kontainer-driver-metadata v0.0.0-00010101000000-000000000000 // indirect
 	github.com/rancher/norman v0.0.0-20200211155126-fc45a55d4dfd
 	github.com/rancher/types v0.0.0-20200218191331-dc762fc27c91
 	github.com/sirupsen/logrus v1.4.2
