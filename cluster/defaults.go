@@ -82,10 +82,11 @@ const (
 	DefaultKubeAPIArgAuditLogPathValue    = "/var/log/kube-audit/audit-log.json"
 	DefaultKubeAPIArgAuditPolicyFileValue = "/etc/kubernetes/audit-policy.yaml"
 
-	DefaultMaxUnavailable            = "10%"
-	DefaultNodeDrainTimeout          = 120
-	DefaultNodeDrainGracePeriod      = -1
-	DefaultNodeDrainIgnoreDaemonsets = true
+	DefaultMaxUnavailableWorker       = "10%"
+	DefaultMaxUnavailableControlplane = "1"
+	DefaultNodeDrainTimeout           = 120
+	DefaultNodeDrainGracePeriod       = -1
+	DefaultNodeDrainIgnoreDaemonsets  = true
 
 	DefaultServiceKubeproxyEnabled = true
 )
@@ -225,13 +226,16 @@ func (c *Cluster) setClusterDefaults(ctx context.Context, flags ExternalFlags) e
 
 func (c *Cluster) setNodeUpgradeStrategy() {
 	if c.UpgradeStrategy == nil {
-		logrus.Info("No input provided for maxUnavailable, setting it to default value of 10%")
+		logrus.Debugf("No input provided for maxUnavailableWorker, setting it to default value of %v percent", strings.TrimRight(DefaultMaxUnavailableWorker, "%"))
+		logrus.Debugf("No input provided for maxUnavailableControlplane, setting it to default value of %v", DefaultMaxUnavailableControlplane)
 		c.UpgradeStrategy = &v3.NodeUpgradeStrategy{
-			MaxUnavailable: DefaultMaxUnavailable,
+			MaxUnavailableWorker:       DefaultMaxUnavailableWorker,
+			MaxUnavailableControlplane: DefaultMaxUnavailableControlplane,
 		}
 		return
 	}
-	setDefaultIfEmpty(&c.UpgradeStrategy.MaxUnavailable, DefaultMaxUnavailable)
+	setDefaultIfEmpty(&c.UpgradeStrategy.MaxUnavailableWorker, DefaultMaxUnavailableWorker)
+	setDefaultIfEmpty(&c.UpgradeStrategy.MaxUnavailableControlplane, DefaultMaxUnavailableControlplane)
 	if !c.UpgradeStrategy.Drain {
 		return
 	}

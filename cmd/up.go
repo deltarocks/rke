@@ -113,35 +113,10 @@ func ClusterUp(ctx context.Context, dialersOptions hosts.DialersOptions, flags c
 	if err != nil {
 		return APIURL, caCrt, clientCert, clientKey, nil, err
 	}
-
-	err = kubeCluster.ValidateHostCountForUpgrade()
-	if err != nil {
-		return APIURL, caCrt, clientCert, clientKey, nil, err
-	}
 	currentCluster, err := kubeCluster.GetClusterState(ctx, clusterState)
 	if err != nil {
 		return APIURL, caCrt, clientCert, clientKey, nil, err
 	}
-
-	if currentCluster != nil {
-		// reconcile this cluster, to check if upgrade is needed, or new nodes are getting added/removed
-		/*This is to separate newly added nodes, so we don't try to check their status/cordon them before upgrade.
-		This will also cover nodes that were considered inactive first time cluster was provisioned, but are now active during upgrade*/
-		currentClusterNodes := make(map[string]bool)
-		for _, node := range clusterState.CurrentState.RancherKubernetesEngineConfig.Nodes {
-			currentClusterNodes[node.HostnameOverride] = true
-		}
-
-		newNodes := make(map[string]bool)
-		for _, node := range clusterState.DesiredState.RancherKubernetesEngineConfig.Nodes {
-			if !currentClusterNodes[node.HostnameOverride] {
-				newNodes[node.HostnameOverride] = true
-			}
-		}
-		kubeCluster.NewHosts = newNodes
-		reconcileCluster = true
-	}
-
 	if !flags.DisablePortCheck {
 		if err = kubeCluster.CheckClusterPorts(ctx, currentCluster); err != nil {
 			return APIURL, caCrt, clientCert, clientKey, nil, err
@@ -170,6 +145,34 @@ func ClusterUp(ctx context.Context, dialersOptions hosts.DialersOptions, flags c
 		return APIURL, caCrt, clientCert, clientKey, nil, err
 	}
 
+	if currentCluster != nil {
+		// reconcile this cluster, to check if upgrade is needed, or new nodes are getting added/removed
+		/*This is to separate newly added nodes, so we don't try to check their status/cordon them before upgrade.
+		This will also cover nodes that were considered inactive first time cluster was provisioned, but are now active during upgrade*/
+		currentClusterNodes := make(map[string]bool)
+		for _, node := range clusterState.CurrentState.RancherKubernetesEngineConfig.Nodes {
+			currentClusterNodes[node.HostnameOverride] = true
+		}
+
+		newNodes := make(map[string]bool)
+		for _, node := range clusterState.DesiredState.RancherKubernetesEngineConfig.Nodes {
+			if !currentClusterNodes[node.HostnameOverride] {
+				newNodes[node.HostnameOverride] = true
+			}
+		}
+		kubeCluster.NewHosts = newNodes
+		reconcileCluster = true
+
+		kubeCluster.FindHostsLabeledToIgnoreUpgrade(ctx)
+		maxUnavailableWorker, maxUnavailableControl, err := kubeCluster.CalculateMaxUnavailable()
+		if err != nil {
+			return APIURL, caCrt, clientCert, clientKey, nil, err
+		}
+		logrus.Infof("Setting maxUnavailable for worker nodes to: %v", maxUnavailableWorker)
+		logrus.Infof("Setting maxUnavailable for control nodes to: %v", maxUnavailableControl)
+		kubeCluster.MaxUnavailableForWorkerNodes, kubeCluster.MaxUnavailableForControlNodes = maxUnavailableWorker, maxUnavailableControl
+	}
+
 	// update APIURL after reconcile
 	if len(kubeCluster.ControlPlaneHosts) > 0 {
 		APIURL = fmt.Sprintf("https://%s:6443", kubeCluster.ControlPlaneHosts[0].Address)
@@ -182,7 +185,7 @@ func ClusterUp(ctx context.Context, dialersOptions hosts.DialersOptions, flags c
 		return APIURL, caCrt, clientCert, clientKey, nil, err
 	}
 
-	err = kubeCluster.DeployControlPlane(ctx, svcOptionsData, reconcileCluster)
+	errMsgMaxUnavailableNotFailedCtrl, err := kubeCluster.DeployControlPlane(ctx, svcOptionsData, reconcileCluster)
 	if err != nil {
 		return APIURL, caCrt, clientCert, clientKey, nil, err
 	}
@@ -202,7 +205,7 @@ func ClusterUp(ctx context.Context, dialersOptions hosts.DialersOptions, flags c
 		return APIURL, caCrt, clientCert, clientKey, nil, err
 	}
 
-	errMsgMaxUnavailableNotFailed, err := kubeCluster.DeployWorkerPlane(ctx, svcOptionsData, reconcileCluster)
+	errMsgMaxUnavailableNotFailedWrkr, err := kubeCluster.DeployWorkerPlane(ctx, svcOptionsData, reconcileCluster)
 	if err != nil {
 		return APIURL, caCrt, clientCert, clientKey, nil, err
 	}
@@ -230,8 +233,8 @@ func ClusterUp(ctx context.Context, dialersOptions hosts.DialersOptions, flags c
 		return APIURL, caCrt, clientCert, clientKey, nil, err
 	}
 
-	if errMsgMaxUnavailableNotFailed != "" {
-		return APIURL, caCrt, clientCert, clientKey, nil, fmt.Errorf(errMsgMaxUnavailableNotFailed)
+	if errMsgMaxUnavailableNotFailedCtrl != "" || errMsgMaxUnavailableNotFailedWrkr != "" {
+		return APIURL, caCrt, clientCert, clientKey, nil, fmt.Errorf(errMsgMaxUnavailableNotFailedCtrl + errMsgMaxUnavailableNotFailedWrkr)
 	}
 	log.Infof(ctx, "Finished building Kubernetes cluster successfully")
 	return APIURL, caCrt, clientCert, clientKey, kubeCluster.Certificates, nil
@@ -244,10 +247,16 @@ func checkAllIncluded(cluster *cluster.Cluster) error {
 
 	var names []string
 	for _, host := range cluster.InactiveHosts {
+		if cluster.HostsLabeledToIgnoreUpgrade[host.Address] {
+			continue
+		}
 		names = append(names, host.Address)
 	}
 
-	return fmt.Errorf("Provisioning incomplete, host(s) [%s] skipped because they could not be contacted", strings.Join(names, ","))
+	if len(names) > 0 {
+		return fmt.Errorf("Provisioning incomplete, host(s) [%s] skipped because they could not be contacted", strings.Join(names, ","))
+	}
+	return nil
 }
 
 func clusterUpFromCli(ctx *cli.Context) error {
