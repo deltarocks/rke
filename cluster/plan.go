@@ -395,6 +395,10 @@ func (c *Cluster) BuildKubeControllerProcess(host *hosts.Host, prefixPath string
 		}
 	}
 
+	if host.CustomCidr != nil {
+		CommandArgs['allocate-node-cidrs'] = 'false'
+	}
+
 	for arg, value := range CommandArgs {
 		cmd := fmt.Sprintf("--%s=%s", arg, value)
 		Command = append(Command, cmd)
@@ -574,6 +578,10 @@ func (c *Cluster) BuildKubeletProcess(host *hosts.Host, prefixPath string, servi
 		if _, ok := c.Services.Kubelet.ExtraArgs[arg]; ok {
 			CommandArgs[arg] = value
 		}
+	}
+
+	if host.CustomCidr != nil {
+		CommandArgs['pod-cidr'] = host.CustomCidr
 	}
 
 	for arg, value := range CommandArgs {
