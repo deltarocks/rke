@@ -395,8 +395,8 @@ func (c *Cluster) BuildKubeControllerProcess(host *hosts.Host, prefixPath string
 		}
 	}
 
-	if host.CustomCidr != nil {
-		CommandArgs['allocate-node-cidrs'] = 'false'
+	if len(host.CustomCidr) != 0 {
+		CommandArgs["allocate-node-cidrs"] = "false"
 	}
 
 	for arg, value := range CommandArgs {
@@ -466,9 +466,7 @@ func (c *Cluster) BuildKubeletProcess(host *hosts.Host, prefixPath string, servi
 	if host.IsControl && !host.IsWorker {
 		CommandArgs["register-with-taints"] = unschedulableControlTaint
 	}
-	if host.Address != host.InternalAddress {
-		CommandArgs["node-ip"] = host.InternalAddress
-	}
+	CommandArgs["node-ip"] = host.InternalAddress
 	if len(c.CloudProvider.Name) > 0 {
 		CommandArgs["cloud-config"] = cloudConfigFileName
 		if host.DockerInfo.OSType == "windows" { // compatible with Windows
@@ -580,8 +578,8 @@ func (c *Cluster) BuildKubeletProcess(host *hosts.Host, prefixPath string, servi
 		}
 	}
 
-	if host.CustomCidr != nil {
-		CommandArgs['pod-cidr'] = host.CustomCidr
+	if len(host.CustomCidr) != 0 {
+		CommandArgs["pod-cidr"] = host.CustomCidr
 	}
 
 	for arg, value := range CommandArgs {

@@ -120,6 +120,7 @@ func (c *Cluster) InvertIndexHosts() error {
 			// Add the bastion host information to each host object
 			newHost.BastionHost = c.BastionHost
 		}
+		newHost.CustomCidr = host.CustomCidr
 		for _, role := range host.Role {
 			logrus.Debugf("Host: " + host.Address + " has role: " + role)
 			switch role {

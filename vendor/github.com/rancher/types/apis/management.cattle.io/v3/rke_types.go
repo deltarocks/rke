@@ -200,6 +200,8 @@ type RKEConfigNode struct {
 	Labels map[string]string `yaml:"labels" json:"labels,omitempty"`
 	// Node Taints
 	Taints []RKETaint `yaml:"taints" json:"taints,omitempty"`
+	// Custom CIDR
+	CustomCidr string `yaml:"custom_cidr" json:"customCidr,omitempty"`
 }
 
 type RKEK8sSystemImage struct {
